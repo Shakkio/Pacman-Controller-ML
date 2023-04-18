@@ -54,9 +54,6 @@ class NodeGroup(object):
         self.connectHorizontally(data)
         self.connectVertically(data)
         self.homekey = None
-        self.rewards = np.full((NROWS,  NCOLS), -100)
-        self.ComputeRewards(data)
-
     def readMazeFile(self, textfile):
         return np.loadtxt(textfile, dtype='<U1')
 
@@ -67,14 +64,6 @@ class NodeGroup(object):
                     x, y = self.constructKey(col+xoffset, row+yoffset)
                     self.nodesLUT[(x, y)] = Node(x, y)
 
-    def ComputeRewards(self, data):
-     
-        for row in list(range(data.shape[0])):
-            for col in list(range(data.shape[1])):
-                if data[row][col] in self.nodeSymbols or data[row][col] in self.nodeSymbols:
-                    self.rewards[row][col] = 10
-
-        self.rewards[26, 1] = 1000
 
     
     def isTerminalState(self, row, column):

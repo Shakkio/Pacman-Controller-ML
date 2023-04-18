@@ -53,8 +53,8 @@ class GameController(object):
         self.setBackground()
         self.nodes = NodeGroup(self.mazedata.obj.name+".txt")
         self.mazedata.obj.connectHomeNodes(self.nodes)
-        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), self.nodes)
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
+        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), self.nodes, self.pellets)
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
 
         self.ghosts.pinky.setStartNode(self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 3)))
@@ -220,7 +220,7 @@ class GameController(object):
         self.pacman.visible = False
         self.ghosts.hide()
 
-    def nextLevel(self):
+    def nextLevel(self):    
         self.showEntities()
         self.level += 1
         self.pause.paused = True

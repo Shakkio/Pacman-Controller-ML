@@ -54,7 +54,6 @@ class Entity(object):
     def GetValidActions(self, node):
         directions = []
         for direction in [UP, DOWN, LEFT, RIGHT]:
-            print(node.tilePosition.x)
             if self.name in node.access[direction]:
                 if self.node.neighbors[direction] is not None:
                     directions.append(direction)

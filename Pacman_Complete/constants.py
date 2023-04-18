@@ -49,13 +49,13 @@ GAMEOVERTXT = 4
 RHO = 0.2
 
 # how much an action’s Q-value depends on the Q-value at the state (or states) it leads to.
-GAMMA = 0.9
+GAMMA = 0.3
 
 # controls how much influence the current feedback value has over the stored Q-value.
 ALPHA = 0.9
 
 # number of iterations
-ITERATIONNUMBER = 40000
+ITERATIONNUMBER = 1000000
 # length of sequence or walk
 NU = 0.05
 
