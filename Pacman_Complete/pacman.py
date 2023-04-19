@@ -38,6 +38,9 @@ class Pacman(Entity):
         self.qValues = {}
         self.qLearning()
 
+    def UpdatePacmanFromState(self, state):
+        self.node = state.node
+
 
     def reset(self):
         Entity.reset(self)
@@ -58,22 +61,35 @@ class Pacman(Entity):
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
 
-        #targetGoal = self.pathfinder.defineGoalNode(self.node, self.nodes)
-         
-        if self.overshotTarget():
+        actions = self.validDirections()
+        closestPellet = self.FindClosestPellet(self.node)
+        closestPelletDirection = self.FindPelletDirection(self.node, closestPellet)
+        state = State(self.node, closestPelletDirection)
+        direction = self.GetBestAction(actions, state)
 
+        if self.overshotTarget():
             self.node = self.target
-            #nodeToGo = self.pathfinder.AStar(self.node, targetGoal, self.nodes)
-            actions = self.GetValidActions(self.node)
-            state = State(self.node, self.FindPelletDirection(self.node, self.FindClosestPellet(self.node)))
+            #to make bestAction work
+            actions = self.validDirections()
+            closestPellet = self.FindClosestPellet(self.node)
+            closestPelletDirection = self.FindPelletDirection(self.node, closestPellet)
+            state = State(self.node, closestPelletDirection)
             direction = self.GetBestAction(actions, state)
-            
+
+            if self.node.neighbors[PORTAL] is not None:
+                self.node = self.node.neighbors[PORTAL]
             self.target = self.getNewTarget(direction)
             if self.target is not self.node:
                 self.direction = direction
+            else:
+                self.target = self.getNewTarget(self.direction)
+
             if self.target is self.node:
                 self.direction = STOP
             self.setPosition()
+        else: 
+            if self.oppositeDirection(direction):
+                self.reverseDirection()
 
     def indexConverter(self, index):
         if index == UP:
@@ -99,7 +115,8 @@ class Pacman(Entity):
                     bestValue = currentValue
                 else:
                     continue
-
+            #print(f"BestValue: {bestValue}")
+            #print(f"ChosenAction:: {chosenAction}")
             return chosenAction
 
     def GetOneOfTheAction(self, actions):
@@ -110,16 +127,19 @@ class Pacman(Entity):
     def ComputeReward(self, state, action):
 
         if state.pelletDirection == action:
-            reward = 10
+            reward = 1
         else:
-            reward = -5
+            reward = -1
 
         return reward
 
 
     def TakeAction(self, state, action):
         
+        #print(f"currentNode: {state.node}")
         self.target = self.getNewTarget(action)
+        #print(f"targetNode: {self.target}")
+
         newState = State(self.target, random.choice(self.GetValidActions(self.target))) 
         
         reward = self.ComputeReward(state, action)
@@ -128,7 +148,7 @@ class Pacman(Entity):
     def GetRandomState(self):
 
         node = random.choice(list(self.nodes.nodesLUT.values()))
-        print(node.position.x)
+        #print(node.position.x)
         pelletDirection = random.choice(self.GetValidActions(node))
         state = State(node, pelletDirection)
         return state
@@ -144,9 +164,11 @@ class Pacman(Entity):
                 rand_nu = random.uniform(0,1)
                 if rand_nu < NU: 
                     state = self.GetRandomState()
+                    self.UpdatePacmanFromState(state)
 
                 # Get the list of available actions. 
-                actions = self.GetValidActions(state.node)
+                actions = self.validDirections()
+                print(f"actions: {actions}")
 
                 if random.uniform(0, 1) < RHO:
                     action = self.GetOneOfTheAction(actions)
@@ -154,6 +176,7 @@ class Pacman(Entity):
                     action = self.GetBestAction(actions, state)
 
                 reward, newState = self.TakeAction(state, action)
+                
 
                 # Get the current q from the store.
                 key = state.GetKey() + str(action)
@@ -161,8 +184,10 @@ class Pacman(Entity):
                     self.qValues[key] = 0
                 Q = self.qValues[key]
 
+
+                self.UpdatePacmanFromState(newState)
                 # Get the q of the best action from the new state.
-                newActions = self.GetValidActions(newState.node)
+                newActions = self.validDirections()
                 newAction = self.GetBestAction(newActions, state)
                 newKey = newState.GetKey() + str(newAction)
                 if newKey not in self.qValues.keys():
@@ -178,10 +203,11 @@ class Pacman(Entity):
                 # And update the state.
                 state = newState
         
-        for keys,values in self.qValues.items():
-            print(keys)
-            print(values)
+        # for keys,values in self.qValues.items():
+        #     print(keys)
+        #     print(values)
         self.reset()
+        #print(self.position)
 
     def getValidKey(self):
         key_pressed = pygame.key.get_pressed()
@@ -208,36 +234,45 @@ class Pacman(Entity):
     
     def FindPelletDirection(self, node, pellet):
 
-        xDistance = abs(pellet.position.x - node.position.x)
-        yDistance = abs(pellet.position.y - node.position.y)
+        yDistance = abs(pellet.truePosition.x - node.position.y)
+        xDistance = abs(pellet.truePosition.y - node.position.x)
+        print(f"xDistance: {xDistance}")
+        print(f"yDistance: {yDistance}")
+
 
         if(xDistance < yDistance):
-            if(node.position.x > pellet.position.x):
+            if(node.position.x > pellet.truePosition.x):
                 direction = LEFT
             else:
                 direction = RIGHT   
         else:
-            if(node.position.y > pellet.position.y):
+            if(node.position.y > pellet.truePosition.y):
                 direction = UP
             else:
                 direction = DOWN
 
-        if direction == None:
-            print("nah fam")
-            return UP
-
-        print(direction)
+        #print(direction)
         return direction
     
     def FindClosestPellet(self, node):
         minDistance = sys.maxsize
         chosenPellet = None
+
         for pellet in self.pellets.pelletList:
             distance = self.distance(pellet, node)
 
             if distance < minDistance:
                 minDistance = distance
                 chosenPellet = pellet
+
+        #print(f"key: {key}")
+        #print(f"chosenPellet Position: {chosenPellet.position}")
+        chosenPellet.color = RED
+        for pellet in self.pellets.pelletList:
+            if pellet == chosenPellet:
+                continue
+
+            pellet.color = WHITE
 
         return chosenPellet
 

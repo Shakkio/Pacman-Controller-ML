@@ -220,7 +220,7 @@ class GameController(object):
         self.pacman.visible = False
         self.ghosts.hide()
 
-    def nextLevel(self):    
+    def nextLevel(self):
         self.showEntities()
         self.level += 1
         self.pause.paused = True

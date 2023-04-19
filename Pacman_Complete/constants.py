@@ -46,18 +46,18 @@ PAUSETXT = 3
 GAMEOVERTXT = 4
 
 # how often the algorithm will take a random action, rather than the best action it knows so far.
-RHO = 0.2
+RHO = 1
 
 # how much an action’s Q-value depends on the Q-value at the state (or states) it leads to.
 GAMMA = 0.3
 
 # controls how much influence the current feedback value has over the stored Q-value.
-ALPHA = 0.9
+ALPHA = 0.7
 
 # number of iterations
-ITERATIONNUMBER = 1000000
+ITERATIONNUMBER = 100000
 # length of sequence or walk
-NU = 0.05
+NU = 0.2
 
 
 NODE_POSITIONS_IGNORE = [

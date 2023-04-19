@@ -63,16 +63,6 @@ class NodeGroup(object):
                 if data[row][col] in self.nodeSymbols:
                     x, y = self.constructKey(col+xoffset, row+yoffset)
                     self.nodesLUT[(x, y)] = Node(x, y)
-
-
-    
-    def isTerminalState(self, row, column):
-
-        if  self.rewards[row, column] == -1:
-            return False
-        else:
-            return True
-        
     
 
     def constructKey(self, x, y):
