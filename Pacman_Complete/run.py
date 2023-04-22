@@ -1,3 +1,4 @@
+from vector import Vector2
 import pygame
 from pygame.locals import *
 from constants import *
@@ -12,7 +13,6 @@ from sprites import LifeSprites
 from sprites import MazeSprites
 from mazes import MazeController
 from mazedata import MazeData######
-import sys
 
 class GameController(object):
     def __init__(self):
@@ -56,6 +56,11 @@ class GameController(object):
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
         self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), self.nodes, self.pellets)
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
+        if(GAME == 0):
+            self.pacman.qLearning()
+        self.pacman.loadPolicy("Qcontroller")
+        
+            
 
         self.ghosts.pinky.setStartNode(self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(2, 3)))
         self.ghosts.inky.setStartNode(self.nodes.getNodeFromTiles(*self.mazedata.obj.addOffset(0, 3)))
@@ -138,7 +143,10 @@ class GameController(object):
                 if event.key == K_SPACE:
                     if self.pacman.alive:
                         self.pause.setPause(playerPaused=True)
+                        directions = self.pacman.validDirections()
+                        #print(directions)
                         if not self.pause.paused:
+                            
                             self.textgroup.hideText()
                             self.showEntities()
                         else:

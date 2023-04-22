@@ -13,16 +13,11 @@ class Pellet(object):
         self.collideRadius = 2 * TILEWIDTH / 16
         self.points = 10
         self.visible = True
-        self.truePosition = self.constructKey(column, row)
         
     def render(self, screen):
         if self.visible:
             p = self.position + self.adjust
             pygame.draw.circle(screen, self.color, p.asInt(), self.radius)
-    
-    def constructKey(self, x, y):
-        return Vector2(x * TILEWIDTH + self.adjust.x, y * TILEHEIGHT + self.adjust.y)
-
 
 class PowerPellet(Pellet):
     def __init__(self, row, column):

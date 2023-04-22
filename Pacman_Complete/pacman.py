@@ -7,17 +7,18 @@ from sprites import PacmanSprites
 from pathfinder import *
 import random
 import numpy as np
+import pickle
 
 class State:
-    def __init__(self, node, pelletDirection):
+    def __init__(self, pelletDirection):
 
-        self.node = node
         self.pelletDirection = pelletDirection
-
+        #self.firstGhostDirection = firstGhostDirection
+        #self.secondGhostDirection = secondGhostDirection
     
     def GetKey(self):
 
-        key = str(self.node.position.x) + str(self.node.position.y) + str(self.pelletDirection)
+        key = str(self.pelletDirection)
         #print(f"key: {key}")
         return key 
 
@@ -36,11 +37,10 @@ class Pacman(Entity):
         self.path = []
         self.ghosts = []
         self.qValues = {}
-        self.qLearning()
+        self.isEnd = False
 
-    def UpdatePacmanFromState(self, state):
-        self.node = state.node
-
+    def UpdatePacman(self, node):
+        self.node = node
 
     def reset(self):
         Entity.reset(self)
@@ -51,8 +51,6 @@ class Pacman(Entity):
         self.sprites.reset()
 
     def die(self):
-        for node in self.nodes.nodesLUT.values():
-            node.fScore = 0
             
         self.alive = False
         self.direction = STOP
@@ -60,12 +58,11 @@ class Pacman(Entity):
     def update(self, dt):	
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
-
-        actions = self.validDirections()
-        closestPellet = self.FindClosestPellet(self.node)
-        closestPelletDirection = self.FindPelletDirection(self.node, closestPellet)
-        state = State(self.node, closestPelletDirection)
-        direction = self.GetBestAction(actions, state)
+        # actions = self.validDirections()
+        # closestPellet = self.FindClosestPellet(self.node)
+        # closestPelletDirection = self.FindPelletDirection(self.node, closestPellet)
+        # state = State(closestPelletDirection)
+        # direction = self.GetBestAction(actions, state)
 
         if self.overshotTarget():
             self.node = self.target
@@ -73,12 +70,14 @@ class Pacman(Entity):
             actions = self.validDirections()
             closestPellet = self.FindClosestPellet(self.node)
             closestPelletDirection = self.FindPelletDirection(self.node, closestPellet)
-            state = State(self.node, closestPelletDirection)
+            state = State(closestPelletDirection)
             direction = self.GetBestAction(actions, state)
 
-            if self.node.neighbors[PORTAL] is not None:
-                self.node = self.node.neighbors[PORTAL]
+            # if self.node.neighbors[PORTAL] is not None:
+            #     self.node = self.node.neighbors[PORTAL]
+
             self.target = self.getNewTarget(direction)
+
             if self.target is not self.node:
                 self.direction = direction
             else:
@@ -87,9 +86,7 @@ class Pacman(Entity):
             if self.target is self.node:
                 self.direction = STOP
             self.setPosition()
-        else: 
-            if self.oppositeDirection(direction):
-                self.reverseDirection()
+
 
     def indexConverter(self, index):
         if index == UP:
@@ -105,6 +102,7 @@ class Pacman(Entity):
 
             bestValue = -9999
             for action in actions:
+                
                 key = state.GetKey() + str(action)
                 if key not in self.qValues:
                     self.qValues[key] = 0
@@ -113,10 +111,16 @@ class Pacman(Entity):
                 if currentValue > bestValue:
                     chosenAction = action
                     bestValue = currentValue
-                else:
-                    continue
-            #print(f"BestValue: {bestValue}")
-            #print(f"ChosenAction:: {chosenAction}")
+                
+                continue
+
+            print(f"BestValue: {bestValue}")
+            print(f"ChosenAction:: {chosenAction}")
+
+            # for action in actions:
+            #     key = state.GetKey() + str(action)
+            #     print(f"action: {self.qValues[key]}")
+
             return chosenAction
 
     def GetOneOfTheAction(self, actions):
@@ -125,13 +129,24 @@ class Pacman(Entity):
         return direction
     
     def ComputeReward(self, state, action):
+        
+        reward = -1
 
         if state.pelletDirection == action:
             reward = 1
-        else:
-            reward = -1
-
+        
         return reward
+    
+    def gameEnded(self, game):
+        if game.lives <= 0 :
+            self.isEnd = True
+            self.finalScore = game.score
+            return 0
+        if game.level > self.level:
+            return 1
+        else:
+            return None
+    
 
 
     def TakeAction(self, state, action):
@@ -140,72 +155,76 @@ class Pacman(Entity):
         self.target = self.getNewTarget(action)
         #print(f"targetNode: {self.target}")
 
-        newState = State(self.target, random.choice(self.GetValidActions(self.target))) 
+        newState = State(random.choice(self.GetValidActions(self.target))) 
+        self.UpdatePacman(self.target)
         
         reward = self.ComputeReward(state, action)
         return reward, newState
 
-    def GetRandomState(self):
+    def GetRandomState(self, node):
 
-        node = random.choice(list(self.nodes.nodesLUT.values()))
-        #print(node.position.x)
         pelletDirection = random.choice(self.GetValidActions(node))
-        state = State(node, pelletDirection)
+        state = State(pelletDirection)
         return state
+    
+    def GetRandomNode(self):
+        node = random.choice(list(self.nodes.nodesLUT.values()))
+        return node
         
     def qLearning(self):
-
-        state = self.GetRandomState()
+        
+        node = self.GetRandomNode()
+        state = self.GetRandomState(node)
 
         for episode in range(ITERATIONNUMBER):
-            if episode % 1000:
+            if episode % 1000 == 0:
                 print("Episode: ", episode)
+            if episode % 500 == 0:
+                self.savePolicy()
+
+            rand_nu = random.uniform(0,1)
+            if rand_nu < NU: 
+                node = self.GetRandomNode()
+                state = self.GetRandomState(node)
             
-                rand_nu = random.uniform(0,1)
-                if rand_nu < NU: 
-                    state = self.GetRandomState()
-                    self.UpdatePacmanFromState(state)
+            # Get the list of available actions. 
+            actions = self.validDirections()
+            #print(f"actions: {actions}")
 
-                # Get the list of available actions. 
-                actions = self.validDirections()
-                print(f"actions: {actions}")
+            if random.uniform(0, 1) < RHO:
+                action = self.GetOneOfTheAction(actions)
+            else:
+                action = self.GetBestAction(actions, state)
+            
+            #execute decided action, also update pacman position
+            reward, newState = self.TakeAction(state, action)
+                    
+            # Get the current q from the store.
+            key = state.GetKey() + str(action)
+            if key not in self.qValues.keys():
+                self.qValues[key] = 0
+            Q = self.qValues[key]
 
-                if random.uniform(0, 1) < RHO:
-                    action = self.GetOneOfTheAction(actions)
-                else:
-                    action = self.GetBestAction(actions, state)
+            # Get the q of the best action from the new state.
+            newActions = self.validDirections()
+            newAction = self.GetBestAction(newActions, state)
+            newKey = newState.GetKey() + str(newAction)
+            if newKey not in self.qValues.keys():
+                self.qValues[newKey] = 0
+            maxQ = self.qValues[newKey]
 
-                reward, newState = self.TakeAction(state, action)
-                
+            # Perform the q learning.
+            Q = (1 - ALPHA) * Q + ALPHA * (reward + GAMMA * maxQ)
 
-                # Get the current q from the store.
-                key = state.GetKey() + str(action)
-                if key not in self.qValues.keys():
-                    self.qValues[key] = 0
-                Q = self.qValues[key]
+            # Store the new Q-value.
+            self.qValues[key] = Q
 
-
-                self.UpdatePacmanFromState(newState)
-                # Get the q of the best action from the new state.
-                newActions = self.validDirections()
-                newAction = self.GetBestAction(newActions, state)
-                newKey = newState.GetKey() + str(newAction)
-                if newKey not in self.qValues.keys():
-                    self.qValues[newKey] = 0
-                maxQ = self.qValues[newKey]
-
-                # Perform the q learning.
-                Q = (1 - ALPHA) * Q + ALPHA * (reward + GAMMA * maxQ)
-
-                # Store the new Q-value.
-                self.qValues[key] = Q
-
-                # And update the state.
-                state = newState
+            # And update the state.
+            state = newState
         
-        # for keys,values in self.qValues.items():
-        #     print(keys)
-        #     print(values)
+        for keys,values in self.qValues.items():
+            print(f"key/pelletDirection + action: {keys}")
+            print(f"value: {values}")
         self.reset()
         #print(self.position)
 
@@ -233,25 +252,23 @@ class Pacman(Entity):
         return False
     
     def FindPelletDirection(self, node, pellet):
+        xDistance = abs(pellet.position.x - node.position.x)
+        yDistance = abs(pellet.position.y - node.position.y)
+        #print(f"xDistance: {xDistance}")
+        #print(f"yDistance: {yDistance}")
+        #print(f"pelletPosition: {pellet.position}")
 
-        yDistance = abs(pellet.truePosition.x - node.position.y)
-        xDistance = abs(pellet.truePosition.y - node.position.x)
-        print(f"xDistance: {xDistance}")
-        print(f"yDistance: {yDistance}")
-
-
-        if(xDistance < yDistance):
-            if(node.position.x > pellet.truePosition.x):
-                direction = LEFT
+        if(xDistance > yDistance):
+            if(pellet.position.x > node.position.x):
+                direction = RIGHT
             else:
-                direction = RIGHT   
+                direction = LEFT   
         else:
-            if(node.position.y > pellet.truePosition.y):
-                direction = UP
-            else:
+            if(pellet.position.y > node.position.y):
                 direction = DOWN
+            else:
+                direction = UP
 
-        #print(direction)
         return direction
     
     def FindClosestPellet(self, node):
@@ -285,6 +302,17 @@ class Pacman(Entity):
 
         return distance
     
+    # Saves the Q-table.
+    def savePolicy(self):
+        fw = open('Qcontroller', 'wb')
+        pickle.dump(self.qValues, fw)
+        fw.close()
+
+    # Loads a Q-table.
+    def loadPolicy(self, file):
+        fr = open(file, 'rb')
+        self.qValues = pickle.load(fr)
+        fr.close()
         
 
     
