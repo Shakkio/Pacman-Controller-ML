@@ -18,7 +18,7 @@ class State:
     
     def GetKey(self):
 
-        key = str(self.pelletDirection)
+        key = str(self.pelletDirection) + str(self.firstGhostDirection)
         #print(f"key: {key}")
         return key 
 
@@ -28,7 +28,7 @@ class Pacman(Entity):
         Entity.__init__(self, node)
         self.name = PACMAN    
         self.color = YELLOW
-        self.direction = LEFT
+        self.direction = STOP
         self.setBetweenNodes(LEFT)
         self.alive = True
         self.sprites = PacmanSprites(self)
@@ -71,7 +71,10 @@ class Pacman(Entity):
             closestPellet = self.FindClosestPellet(self.node)
             closestPelletDirection = self.FindEntityDirection(self.node, closestPellet)
             closestGhost = self.FindClosestGhost(self.node)
-            closestGhostDirection = self.FindEntityDirection(self.node, closestGhost)
+            if(closestGhost !=None):
+                closestGhostDirection = self.FindEntityDirection(self.node, closestGhost)
+            else:
+                closestGhostDirection = STOP
             state = State(closestPelletDirection, closestGhostDirection)
             direction = self.GetBestAction(actions, state)
 
@@ -116,13 +119,6 @@ class Pacman(Entity):
                 
                 continue
 
-            print(f"BestValue: {bestValue}")
-            print(f"ChosenAction:: {chosenAction}")
-
-            # for action in actions:
-            #     key = state.GetKey() + str(action)
-            #     print(f"action: {self.qValues[key]}")
-
             return chosenAction
 
     def GetOneOfTheAction(self, actions):
@@ -132,13 +128,13 @@ class Pacman(Entity):
     
     def ComputeReward(self, state, action):
         
-        reward = -0.2
+        reward = 0.3
         
         if state.pelletDirection == action:
-            reward = 0.6
+            reward = 1
 
-        # if state.firstGhostDirection == action:
-        #     reward = reward - 1
+        if state.firstGhostDirection == action:
+            reward = reward - 1
         
         return reward
     
@@ -157,7 +153,7 @@ class Pacman(Entity):
         #print(f"currentNode: {state.node}")
         self.target = self.getNewTarget(action)
         #print(f"targetNode: {self.target}")
-        ghostDirection = self.GetRandomDirection()
+        ghostDirection = self.GetRandomDirectionGhost()
         newState = State(random.choice(self.GetValidActions(self.target)), ghostDirection)
         self.UpdatePacman(self.target)
         
@@ -166,12 +162,18 @@ class Pacman(Entity):
     
     def GetRandomDirection(self):
         directions = [UP, DOWN, LEFT, RIGHT]
-        return directions
+        direction = random.choice(directions)
+        return direction
+    
+    def GetRandomDirectionGhost(self):
+        directions = [UP, DOWN, LEFT, RIGHT, STOP]
+        direction = random.choice(directions)
+        return direction
 
     def GetRandomState(self, node):
 
         pelletDirection = random.choice(self.GetValidActions(node))
-        ghostDirection = random.choice(self.GetRandomDirection())
+        ghostDirection = self.GetRandomDirectionGhost()
         state = State(pelletDirection, ghostDirection)
         return state
     
@@ -248,8 +250,8 @@ class Pacman(Entity):
         return None   
     
     def collideGhost(self, ghost):
-        return False
-        #return self.collideCheck(ghost)
+        #return False
+        return self.collideCheck(ghost)
 
     def collideCheck(self, other):
         d = self.position - other.position
@@ -306,21 +308,22 @@ class Pacman(Entity):
 
         for ghost in self.ghosts:
             distance = self.distance(ghost, node)
+            #print(f"ghostDistance: {distance}")
+            if(distance > 200):
+                continue
+
+            if ghost.mode == FREIGHT:
+                print("freighted")
+                continue
 
             if distance < minDistance:
                 minDistance = distance
                 chosenGhost = ghost
 
+        return chosenGhost
+
         #print(f"key: {key}")
         #print(f"chosenPellet Position: {chosenPellet.position}")
-        chosenGhost.color = YELLOW
-        for ghost in self.ghosts:
-            if ghost == chosenGhost:
-                continue
-
-            ghost.color = WHITE
-
-        return chosenGhost
 
     
     def AddGhost(self, ghost):

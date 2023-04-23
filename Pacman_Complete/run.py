@@ -5,9 +5,9 @@ from constants import *
 from pacman import Pacman
 from nodes import NodeGroup
 from pellets import PelletGroup
-from ghosts import GhostGroup
-from fruit import Fruit
-from pauser import Pause
+from ghosts import GhostGroup 
+from fruit import Fruit 
+from pauser import Pause 
 from text import TextGroup
 from sprites import LifeSprites
 from sprites import MazeSprites

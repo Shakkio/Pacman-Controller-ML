@@ -56,8 +56,9 @@ ALPHA = 1
 
 # number of iterations
 ITERATIONNUMBER = 10000
+
 # length of sequence or walk
-NU = 1
+NU = 0.5
 
 # If learning or playing
 GAME = 0 # learning
